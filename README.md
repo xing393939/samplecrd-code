@@ -2,9 +2,9 @@
 ```
 # 保证项目目录samplecrd-code在github.com/xing393939目录下
 go mod vendor
-bash +x hack/codegen-samplecrd.sh
-go build -o samplecrd-controller ./app/samplecrd
-./samplecrd-controller -kubeconfig=$HOME/.kube/config -alsologtostderr=true
+bash +x hack/codegen-network.sh
+go build -o network-controller ./app/network
+./network-controller -kubeconfig=$HOME/.kube/config -alsologtostderr=true
 
 # 测试创建crd和network对象
 kubectl apply -f crd/network.yaml
