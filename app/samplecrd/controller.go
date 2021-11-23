@@ -18,10 +18,10 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	samplecrdv1 "github.com/xing393939/samplecrd-code/pkg/apis/samplecrd/v1"
-	clientset "github.com/xing393939/samplecrd-code/pkg/client/clientset/versioned"
-	networkscheme "github.com/xing393939/samplecrd-code/pkg/client/clientset/versioned/scheme"
-	informers "github.com/xing393939/samplecrd-code/pkg/client/informers/externalversions/samplecrd/v1"
-	listers "github.com/xing393939/samplecrd-code/pkg/client/listers/samplecrd/v1"
+	clientset "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/clientset/versioned"
+	networkscheme "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/clientset/versioned/scheme"
+	informers "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/informers/externalversions/samplecrd/v1"
+	listers "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/listers/samplecrd/v1"
 )
 
 const controllerAgentName = "network-controller"

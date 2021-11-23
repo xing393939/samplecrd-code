@@ -3,8 +3,8 @@
 package samplecrd
 
 import (
-	internalinterfaces "github.com/xing393939/samplecrd-code/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/xing393939/samplecrd-code/pkg/client/informers/externalversions/samplecrd/v1"
+	internalinterfaces "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/informers/externalversions/internalinterfaces"
+	v1 "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/informers/externalversions/samplecrd/v1"
 )
 
 // Interface provides access to each of this group's versions.

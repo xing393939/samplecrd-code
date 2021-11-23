@@ -7,9 +7,9 @@ import (
 	time "time"
 
 	samplecrdv1 "github.com/xing393939/samplecrd-code/pkg/apis/samplecrd/v1"
-	versioned "github.com/xing393939/samplecrd-code/pkg/client/clientset/versioned"
-	internalinterfaces "github.com/xing393939/samplecrd-code/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/xing393939/samplecrd-code/pkg/client/listers/samplecrd/v1"
+	versioned "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/clientset/versioned"
+	internalinterfaces "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/informers/externalversions/internalinterfaces"
+	v1 "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/listers/samplecrd/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"

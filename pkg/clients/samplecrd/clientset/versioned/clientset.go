@@ -5,7 +5,7 @@ package versioned
 import (
 	"fmt"
 
-	samplecrdv1 "github.com/xing393939/samplecrd-code/pkg/client/clientset/versioned/typed/samplecrd/v1"
+	samplecrdv1 "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/clientset/versioned/typed/samplecrd/v1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"

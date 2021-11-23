@@ -7,9 +7,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/xing393939/samplecrd-code/pkg/client/clientset/versioned"
-	internalinterfaces "github.com/xing393939/samplecrd-code/pkg/client/informers/externalversions/internalinterfaces"
-	samplecrd "github.com/xing393939/samplecrd-code/pkg/client/informers/externalversions/samplecrd"
+	versioned "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/clientset/versioned"
+	internalinterfaces "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/informers/externalversions/internalinterfaces"
+	samplecrd "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/informers/externalversions/samplecrd"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

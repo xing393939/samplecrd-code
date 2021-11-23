@@ -3,9 +3,9 @@
 package fake
 
 import (
-	clientset "github.com/xing393939/samplecrd-code/pkg/client/clientset/versioned"
-	samplecrdv1 "github.com/xing393939/samplecrd-code/pkg/client/clientset/versioned/typed/samplecrd/v1"
-	fakesamplecrdv1 "github.com/xing393939/samplecrd-code/pkg/client/clientset/versioned/typed/samplecrd/v1/fake"
+	clientset "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/clientset/versioned"
+	samplecrdv1 "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/clientset/versioned/typed/samplecrd/v1"
+	fakesamplecrdv1 "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/clientset/versioned/typed/samplecrd/v1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

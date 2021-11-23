@@ -4,7 +4,7 @@ package v1
 
 import (
 	v1 "github.com/xing393939/samplecrd-code/pkg/apis/samplecrd/v1"
-	"github.com/xing393939/samplecrd-code/pkg/client/clientset/versioned/scheme"
+	"github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 

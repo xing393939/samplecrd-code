@@ -1,9 +1,9 @@
-# Usage
+# samplecrd
 ```
 # 保证项目目录samplecrd-code在github.com/xing393939目录下
 go mod vendor
-bash +x hack/update-codegen.sh
-go build -o samplecrd-controller .
+bash +x hack/codegen-samplecrd.sh
+go build -o samplecrd-controller ./app/samplecrd
 ./samplecrd-controller -kubeconfig=$HOME/.kube/config -alsologtostderr=true
 
 # 测试创建crd和network对象

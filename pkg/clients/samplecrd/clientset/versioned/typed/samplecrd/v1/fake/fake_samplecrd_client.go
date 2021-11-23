@@ -3,7 +3,7 @@
 package fake
 
 import (
-	v1 "github.com/xing393939/samplecrd-code/pkg/client/clientset/versioned/typed/samplecrd/v1"
+	v1 "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/clientset/versioned/typed/samplecrd/v1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )

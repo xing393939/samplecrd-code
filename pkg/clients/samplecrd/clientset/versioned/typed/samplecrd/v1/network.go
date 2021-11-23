@@ -7,7 +7,7 @@ import (
 	"time"
 
 	v1 "github.com/xing393939/samplecrd-code/pkg/apis/samplecrd/v1"
-	scheme "github.com/xing393939/samplecrd-code/pkg/client/clientset/versioned/scheme"
+	scheme "github.com/xing393939/samplecrd-code/pkg/clients/samplecrd/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
