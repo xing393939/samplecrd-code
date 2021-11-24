@@ -9,7 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
-	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -96,16 +95,17 @@ func createPod(kubeClient *kubernetes.Clientset, cluster *samplecrdv1.EtcdCluste
 	if index == 0 {
 		state = "new"
 	}
-	podName := fmt.Sprintf("%s-%d", cluster.Name, time.Now().UnixNano())
-	podEndpoint := "http://" + podName + "." + cluster.Name
+	podName := fmt.Sprintf("%s%d", cluster.Name, time.Now().UnixNano())
+	podEndpoint := "http://" + podName
 	podInitialCluster := podName + "=" + podEndpoint + ":2380"
-	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=/var/etcd/data --name=%s --initial-advertise-peer-urls=%s "+
+	commandMain := fmt.Sprintf("/usr/local/bin/etcd --data-dir=/var/etcd/data --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=%s --listen-client-urls=%s --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
 		podName, podEndpoint+":2380", "http://0.0.0.0:2380", "http://0.0.0.0:2379", podEndpoint+":2379", podInitialCluster, state)
 	if state == "new" {
-		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, uuid.New())
+		commandMain = fmt.Sprintf("%s --initial-cluster-token=%s", commandMain, uuid.New())
 	}
+	commandFirst := fmt.Sprintf(`until nslookup %s; do sleep 1; done`, podName)
 	pod := v1.Pod{
 		ObjectMeta: metaV1.ObjectMeta{
 			Name:   podName,
@@ -113,9 +113,13 @@ func createPod(kubeClient *kubernetes.Clientset, cluster *samplecrdv1.EtcdCluste
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{{
-				Name:    podName,
-				Image:   "ibmcom/etcd:" + cluster.Spec.Version,
-				Command: strings.Split(commands, " "),
+				Name:  podName,
+				Image: "ibmcom/etcd:" + cluster.Spec.Version,
+				Command: []string{
+					"/bin/sh",
+					"-c",
+					commandFirst + " && " + commandMain,
+				},
 				Resources: v1.ResourceRequirements{
 					Limits: v1.ResourceList{
 						v1.ResourceCPU:    resource.MustParse("250m"),

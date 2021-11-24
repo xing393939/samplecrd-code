@@ -1,7 +1,7 @@
 apiVersion: samplecrd.k8s.io/v1
 kind: EtcdCluster
 metadata:
-  name: example-etcdcluster
+  name: etcdcluster
 spec:
   size: 1
   version: "3.2.24.2"
