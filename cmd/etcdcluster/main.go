@@ -1,8 +1,15 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"fmt"
+	"github.com/google/uuid"
+	v12 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/tools/cache"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -11,6 +18,7 @@ import (
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
+	samplecrdv1 "github.com/xing393939/samplecrd-code/pkg/apis/etcdcluster/v1"
 	clientset "github.com/xing393939/samplecrd-code/pkg/clients/etcdcluster/clientset/versioned"
 	informers "github.com/xing393939/samplecrd-code/pkg/clients/etcdcluster/informers/externalversions"
 	"github.com/xing393939/samplecrd-code/pkg/signals"
@@ -38,31 +46,82 @@ func main() {
 	}
 	kubeClient.ServerVersion()
 
-	networkClient, err := clientset.NewForConfig(cfg)
+	etcdClusterClient, err := clientset.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("Error building example clientset: %s", err.Error())
 	}
 
-	networkInformerFactory := informers.NewSharedInformerFactory(networkClient, time.Second*30)
-	networkInformer := networkInformerFactory.Samplecrd().V1().EtcdClusters()
-	networkInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    func(obj interface{}) {},
-		UpdateFunc: func(old, new interface{}) {},
-		DeleteFunc: func(obj interface{}) {},
+	etcdClusterInformerFactory := informers.NewSharedInformerFactory(etcdClusterClient, time.Second*30)
+	etcdClusterInformer := etcdClusterInformerFactory.Samplecrd().V1().EtcdClusters()
+	etcdClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			cluster := obj.(*samplecrdv1.EtcdCluster)
+			createPod(kubeClient, cluster, 0)
+		},
+		UpdateFunc: func(old, new interface{}) {
+			oldEtcdCluster := old.(*samplecrdv1.EtcdCluster)
+			newEtcdCluster := new.(*samplecrdv1.EtcdCluster)
+			if oldEtcdCluster.ResourceVersion == newEtcdCluster.ResourceVersion {
+				return
+			}
+			glog.Info(newEtcdCluster.Spec.Size, ",", newEtcdCluster.Spec.Version)
+		},
+		DeleteFunc: func(obj interface{}) {
+			cluster := obj.(*samplecrdv1.EtcdCluster)
+			err := kubeClient.CoreV1().Pods(cluster.Namespace).DeleteCollection(context.TODO(), v1.DeleteOptions{}, v1.ListOptions{
+				LabelSelector: "clusterName=" + cluster.Name,
+			})
+			if err != nil {
+				glog.Fatal(err)
+			}
+		},
 	})
 
-	go networkInformerFactory.Start(stopCh)
+	go etcdClusterInformerFactory.Start(stopCh)
 
-	if err = run(stopCh); err != nil {
-		glog.Fatalf("Error running controller: %s", err.Error())
+	select {}
+}
+
+func createPod(kubeClient *kubernetes.Clientset, cluster *samplecrdv1.EtcdCluster, index int) {
+	state := "new"
+	if index == 0 {
+		state = "existing"
 	}
-}
-
-func run(stopCh <-chan struct{}) error {
-	return nil
-}
-
-func init() {
-	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	podName := rand.String(8)
+	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=/var/etcd/data --name=%s --initial-advertise-peer-urls=%s "+
+		"--listen-peer-urls=%s --listen-client-urls=%s --advertise-client-urls=%s "+
+		"--initial-cluster=%s --initial-cluster-state=%s",
+		podName, "2380", "0.0.0.0:2380", "0.0.0.0:2379", "2379", strings.Join(nil, ","), state)
+	if state == "new" {
+		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, uuid.New())
+	}
+	pod := v12.Pod{
+		ObjectMeta: v1.ObjectMeta{
+			Name:        podName,
+			Labels:      map[string]string{},
+			Annotations: map[string]string{},
+		},
+		Spec: v12.PodSpec{
+			Containers: []v12.Container{{
+				Command: strings.Split(commands, " "),
+				Image:   "ss",
+				Ports: []v12.ContainerPort{
+					{
+						Name:          "server",
+						ContainerPort: int32(2380),
+					},
+					{
+						Name:          "client",
+						ContainerPort: int32(2379),
+					},
+				},
+			}},
+			RestartPolicy: v12.RestartPolicyNever,
+		},
+	}
+	pod.ObjectMeta.Labels["clusterName"] = cluster.Name
+	_, err := kubeClient.CoreV1().Pods(cluster.Namespace).Create(context.TODO(), &pod, v1.CreateOptions{})
+	if err != nil {
+		glog.Fatal(err)
+	}
 }
