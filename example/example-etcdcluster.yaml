@@ -4,4 +4,4 @@ metadata:
   name: example-etcdcluster
 spec:
   size: 1
-  version: "1.0.0"
+  version: "3.2.24.2"

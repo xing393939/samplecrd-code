@@ -5,9 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"github.com/google/uuid"
-	v12 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/rand"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"strings"
 	"time"
@@ -44,7 +44,6 @@ func main() {
 	if err != nil {
 		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
-	kubeClient.ServerVersion()
 
 	etcdClusterClient, err := clientset.NewForConfig(cfg)
 	if err != nil {
@@ -56,23 +55,28 @@ func main() {
 	etcdClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			cluster := obj.(*samplecrdv1.EtcdCluster)
+			createHeadlessServer(kubeClient, cluster)
 			createPod(kubeClient, cluster, 0)
 		},
 		UpdateFunc: func(old, new interface{}) {
-			oldEtcdCluster := old.(*samplecrdv1.EtcdCluster)
-			newEtcdCluster := new.(*samplecrdv1.EtcdCluster)
-			if oldEtcdCluster.ResourceVersion == newEtcdCluster.ResourceVersion {
+			oldCluster := old.(*samplecrdv1.EtcdCluster)
+			newCluster := new.(*samplecrdv1.EtcdCluster)
+			if oldCluster.ResourceVersion == newCluster.ResourceVersion {
 				return
 			}
-			glog.Info(newEtcdCluster.Spec.Size, ",", newEtcdCluster.Spec.Version)
+			glog.Info(newCluster.Spec.Size, ",", newCluster.Spec.Version)
 		},
 		DeleteFunc: func(obj interface{}) {
 			cluster := obj.(*samplecrdv1.EtcdCluster)
-			err := kubeClient.CoreV1().Pods(cluster.Namespace).DeleteCollection(context.TODO(), v1.DeleteOptions{}, v1.ListOptions{
+			err := kubeClient.CoreV1().Pods(cluster.Namespace).DeleteCollection(context.TODO(), metaV1.DeleteOptions{}, metaV1.ListOptions{
 				LabelSelector: "clusterName=" + cluster.Name,
 			})
 			if err != nil {
-				glog.Fatal(err)
+				glog.Info(err)
+			}
+			err = kubeClient.CoreV1().Services(cluster.Namespace).Delete(context.TODO(), cluster.Name, metaV1.DeleteOptions{})
+			if err != nil {
+				glog.Info(err)
 			}
 		},
 	})
@@ -82,30 +86,43 @@ func main() {
 	select {}
 }
 
+func init() {
+	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+}
+
 func createPod(kubeClient *kubernetes.Clientset, cluster *samplecrdv1.EtcdCluster, index int) {
-	state := "new"
+	state := "existing"
 	if index == 0 {
-		state = "existing"
+		state = "new"
 	}
-	podName := rand.String(8)
+	podName := fmt.Sprintf("%s-%d", cluster.Name, time.Now().UnixNano())
+	podEndpoint := "http://" + podName + "." + cluster.Name
+	podInitialCluster := podName + "=" + podEndpoint + ":2380"
 	commands := fmt.Sprintf("/usr/local/bin/etcd --data-dir=/var/etcd/data --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=%s --listen-client-urls=%s --advertise-client-urls=%s "+
 		"--initial-cluster=%s --initial-cluster-state=%s",
-		podName, "2380", "0.0.0.0:2380", "0.0.0.0:2379", "2379", strings.Join(nil, ","), state)
+		podName, podEndpoint+":2380", "http://0.0.0.0:2380", "http://0.0.0.0:2379", podEndpoint+":2379", podInitialCluster, state)
 	if state == "new" {
 		commands = fmt.Sprintf("%s --initial-cluster-token=%s", commands, uuid.New())
 	}
-	pod := v12.Pod{
-		ObjectMeta: v1.ObjectMeta{
-			Name:        podName,
-			Labels:      map[string]string{},
-			Annotations: map[string]string{},
+	pod := v1.Pod{
+		ObjectMeta: metaV1.ObjectMeta{
+			Name:   podName,
+			Labels: map[string]string{},
 		},
-		Spec: v12.PodSpec{
-			Containers: []v12.Container{{
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{{
+				Name:    podName,
+				Image:   "ibmcom/etcd:" + cluster.Spec.Version,
 				Command: strings.Split(commands, " "),
-				Image:   "ss",
-				Ports: []v12.ContainerPort{
+				Resources: v1.ResourceRequirements{
+					Limits: v1.ResourceList{
+						v1.ResourceCPU:    resource.MustParse("250m"),
+						v1.ResourceMemory: resource.MustParse("512Mi"),
+					},
+				},
+				Ports: []v1.ContainerPort{
 					{
 						Name:          "server",
 						ContainerPort: int32(2380),
@@ -116,12 +133,40 @@ func createPod(kubeClient *kubernetes.Clientset, cluster *samplecrdv1.EtcdCluste
 					},
 				},
 			}},
-			RestartPolicy: v12.RestartPolicyNever,
+			RestartPolicy: v1.RestartPolicyNever,
 		},
 	}
 	pod.ObjectMeta.Labels["clusterName"] = cluster.Name
-	_, err := kubeClient.CoreV1().Pods(cluster.Namespace).Create(context.TODO(), &pod, v1.CreateOptions{})
+	_, err := kubeClient.CoreV1().Pods(cluster.Namespace).Create(context.TODO(), &pod, metaV1.CreateOptions{})
 	if err != nil {
-		glog.Fatal(err)
+		glog.Info(err)
+	}
+}
+
+func createHeadlessServer(kubeClient *kubernetes.Clientset, cluster *samplecrdv1.EtcdCluster) {
+	service := v1.Service{
+		ObjectMeta: metaV1.ObjectMeta{
+			Name:   cluster.Name,
+			Labels: map[string]string{},
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Name: "server",
+					Port: int32(2380),
+				},
+				{
+					Name: "client",
+					Port: int32(2379),
+				},
+			},
+			ClusterIP: "None",
+			Selector:  map[string]string{},
+		},
+	}
+	service.Spec.Selector["clusterName"] = cluster.Name
+	_, err := kubeClient.CoreV1().Services(cluster.Namespace).Create(context.TODO(), &service, metaV1.CreateOptions{})
+	if err != nil {
+		glog.Info(err)
 	}
 }
