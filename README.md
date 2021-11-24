@@ -3,7 +3,7 @@
 # 保证项目目录samplecrd-code在github.com/xing393939目录下
 go mod vendor
 bash +x hack/codegen-network.sh
-go build -o network-controller ./app/network
+go build -o network-controller ./cmd/network
 ./network-controller -kubeconfig=$HOME/.kube/config -alsologtostderr=true
 
 # 测试创建crd和network对象
@@ -20,7 +20,7 @@ kubectl delete -f crd/network.yaml
 # 保证项目目录samplecrd-code在github.com/xing393939目录下
 go mod vendor
 bash +x hack/codegen-etcdcluster.sh
-go build -o etcdcluster-controller ./app/etcdcluster
+go build -o etcdcluster-controller ./cmd/etcdcluster
 ./etcdcluster-controller -kubeconfig=$HOME/.kube/config -alsologtostderr=true
 
 # 测试创建crd和network对象

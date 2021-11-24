@@ -28,7 +28,7 @@ type EtcdCluster struct {
 // EtcdClusterSpec is the spec for a EtcdCluster resource
 type EtcdClusterSpec struct {
 	// this is where you would put your custom resource data
-	Size    string `json:"size"`
+	Size    int    `json:"size"`
 	Version string `json:"version"`
 }
 
