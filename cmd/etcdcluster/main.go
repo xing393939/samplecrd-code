@@ -96,7 +96,7 @@ func createPod(kubeClient *kubernetes.Clientset, cluster *samplecrdv1.EtcdCluste
 		state = "new"
 	}
 	podName := fmt.Sprintf("%s%d", cluster.Name, time.Now().UnixNano())
-	podEndpoint := "http://" + podName
+	podEndpoint := "http://" + podName + "." + cluster.Name
 	podInitialCluster := podName + "=" + podEndpoint + ":2380"
 	commandMain := fmt.Sprintf("/usr/local/bin/etcd --data-dir=/var/etcd/data --name=%s --initial-advertise-peer-urls=%s "+
 		"--listen-peer-urls=%s --listen-client-urls=%s --advertise-client-urls=%s "+
@@ -105,7 +105,7 @@ func createPod(kubeClient *kubernetes.Clientset, cluster *samplecrdv1.EtcdCluste
 	if state == "new" {
 		commandMain = fmt.Sprintf("%s --initial-cluster-token=%s", commandMain, uuid.New())
 	}
-	commandFirst := fmt.Sprintf(`until nslookup %s; do sleep 1; done`, podName)
+	commandFirst := fmt.Sprintf(`until nslookup %s; do sleep 1; done`, podName+"."+cluster.Name)
 	pod := v1.Pod{
 		ObjectMeta: metaV1.ObjectMeta{
 			Name:   podName,
@@ -138,6 +138,9 @@ func createPod(kubeClient *kubernetes.Clientset, cluster *samplecrdv1.EtcdCluste
 				},
 			}},
 			RestartPolicy: v1.RestartPolicyNever,
+			// 非statefulSet的pod必须指定hostname和subdomain才能用headless服务域名
+			Hostname:  podName,
+			Subdomain: cluster.Name,
 		},
 	}
 	pod.ObjectMeta.Labels["clusterName"] = cluster.Name
